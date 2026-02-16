@@ -9,14 +9,17 @@ jobs:
   trivy-scan:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.20.0
         with:
-          scan-type: 'fs'
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          scan-type: fs
+          format: table
+          exit-code: 0
+          severity: CRITICAL,HIGH,MEDIUM
