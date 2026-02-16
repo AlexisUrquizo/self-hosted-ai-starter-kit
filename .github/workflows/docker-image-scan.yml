@@ -1,0 +1,33 @@
+name: Docker Images Security Scan (Full)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docker-scan:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - n8nio/n8n:latest
+          - ollama/ollama:latest
+          - ollama/ollama:rocm
+          - postgres:16-alpine
+          - qdrant/qdrant
+
+    steps:
+      - name: Scan Docker Image
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ matrix.image }}
+          format: json
+          output: trivy-${{ matrix.image }}.json
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.image }}
+          path: trivy-${{ matrix.image }}.json
