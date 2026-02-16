@@ -14,20 +14,26 @@ jobs:
           - ollama/ollama:latest
           - ollama/ollama:rocm
           - postgres:16-alpine
-          - qdrant/qdrant
+          - qdrant/qdrant:latest
 
     steps:
+      - name: Set sanitized image name
+        id: sanitize
+        run: |
+          SAFE_NAME=$(echo "${{ matrix.image }}" | sed 's/[\/:]/-/g')
+          echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+
       - name: Scan Docker Image
         uses: aquasecurity/trivy-action@0.20.0
         with:
           image-ref: ${{ matrix.image }}
           format: json
-          output: trivy-${{ matrix.image }}.json
+          output: trivy-${{ steps.sanitize.outputs.safe_name }}.json
           severity: CRITICAL,HIGH,MEDIUM,LOW
           ignore-unfixed: false
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: report-${{ matrix.image }}
-          path: trivy-${{ matrix.image }}.json
+          name: report-${{ steps.sanitize.outputs.safe_name }}
+          path: trivy-${{ steps.sanitize.outputs.safe_name }}.json
