@@ -1,4 +1,4 @@
-name: Security Scan - Trivy
+name: Security Scan - Trivy (Professional Report)
 
 on:
   push:
@@ -9,17 +9,21 @@ jobs:
   trivy-scan:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Trivy filesystem scan
+      - name: Run Trivy scan and generate JSON report
         uses: aquasecurity/trivy-action@0.20.0
         with:
           scan-type: fs
-          format: table
-          exit-code: 0
+          format: json
+          output: trivy-report.json
           severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-security-report
+          path: trivy-report.json
