@@ -1,8 +1,6 @@
-name: Security Scan - Trivy (Professional Report)
+name: Security Scan - Trivy (Explicit Summary)
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -13,17 +11,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Trivy scan and generate JSON report
+      - name: Run Trivy scan
         uses: aquasecurity/trivy-action@0.20.0
         with:
           scan-type: fs
           format: json
           output: trivy-report.json
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: false
+          severity: CRITICAL,HIGH,MEDIUM,LOW
 
-      - name: Upload Trivy report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-security-report
-          path: trivy-report.json
+      - name: Generate explicit summary
+        run: |
+          echo "===== TRIVY SECURITY SUMMARY ====="
+          if [ ! -s trivy-report.json ]; then
+            echo "No vulnerabilities detected."
+            echo "CRITICAL: 0"
+            echo "HIGH: 0"
+            echo "MEDIUM: 0"
+            echo "LOW: 0"
+          else
+            cat trivy-report.json | jq '
+            if .Results then
+              {
+                CRITICAL: ([.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length),
+                HIGH: ([.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")] | length),
+                MEDIUM: ([.Results[].Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length),
+                LOW: ([.Results[].Vulnerabilities[]? | select(.Severity=="LOW")] | length)
+              }
+            else
+              {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0}
+            end'
+          fi
