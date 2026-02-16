@@ -1,0 +1,63 @@
+name: Full Docker Security Report
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docker-security-scan:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - n8nio/n8n:latest
+          - ollama/ollama:latest
+          - ollama/ollama:rocm
+          - postgres:16-alpine
+          - qdrant/qdrant:latest
+
+    steps:
+      - name: Sanitize image name
+        id: sanitize
+        run: |
+          SAFE_NAME=$(echo "${{ matrix.image }}" | sed 's/[\/:]/-/g')
+          echo "safe_name=$SAFE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Scan Docker Image (HTML)
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ matrix.image }}
+          format: template
+          template: "@/contrib/html.tpl"
+          output: report-${{ steps.sanitize.outputs.safe_name }}.html
+          severity: CRITICAL,HIGH,MEDIUM,LOW
+          ignore-unfixed: false
+
+      - name: Upload individual report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ steps.sanitize.outputs.safe_name }}
+          path: report-${{ steps.sanitize.outputs.safe_name }}.html
+
+  consolidate-report:
+    runs-on: ubuntu-latest
+    needs: docker-security-scan
+
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+
+      - name: Merge reports
+        run: |
+          echo "<html><body><h1>Consolidated Docker Security Report</h1>" > consolidated-report.html
+          for file in report-*/report-*.html; do
+            echo "<hr>" >> consolidated-report.html
+            cat $file >> consolidated-report.html
+          done
+          echo "</body></html>" >> consolidated-report.html
+
+      - name: Upload consolidated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-docker-security-report
+          path: consolidated-report.html
